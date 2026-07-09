@@ -1,8 +1,7 @@
 """Health check routes."""
 import logging
 from fastapi import APIRouter
-from app.services.llm_service import OllamaService
-from app.services.image_service import ComfyUIService
+import httpx
 from app.config import get_settings
 
 logger = logging.getLogger(__name__)
@@ -14,8 +13,13 @@ settings = get_settings()
 @router.get("/ollama")
 async def check_ollama():
     """Check Ollama connection."""
-    llm_service = OllamaService(settings.OLLAMA_BASE_URL, settings.OLLAMA_MODEL)
-    is_connected = llm_service.check_connection()
+    try:
+        async with httpx.AsyncClient(timeout=5.0) as client:
+            resp = await client.get(f"{settings.OLLAMA_BASE_URL}/api/tags")
+            is_connected = resp.status_code == 200
+    except Exception as e:
+        logger.error(f"Ollama health check failed: {e}")
+        is_connected = False
     
     return {
         "service": "ollama",
@@ -28,12 +32,13 @@ async def check_ollama():
 @router.get("/comfyui")
 async def check_comfyui():
     """Check ComfyUI connection."""
-    image_service = ComfyUIService(
-        settings.COMFYUI_BASE_URL,
-        settings.IMAGE_MODEL,
-        settings.IMAGES_PATH,
-    )
-    is_connected = image_service.check_connection()
+    try:
+        async with httpx.AsyncClient(timeout=5.0) as client:
+            resp = await client.get(f"{settings.COMFYUI_BASE_URL}/system_stats")
+            is_connected = resp.status_code == 200
+    except Exception as e:
+        logger.error(f"ComfyUI health check failed: {e}")
+        is_connected = False
     
     return {
         "service": "comfyui",
@@ -46,20 +51,16 @@ async def check_comfyui():
 @router.get("/status")
 async def status():
     """Get overall system status."""
-    llm_service = OllamaService(settings.OLLAMA_BASE_URL, settings.OLLAMA_MODEL)
-    image_service = ComfyUIService(
-        settings.COMFYUI_BASE_URL,
-        settings.IMAGE_MODEL,
-        settings.IMAGES_PATH,
-    )
+    ollama_status = await check_ollama()
+    comfyui_status = await check_comfyui()
     
-    ollama_connected = llm_service.check_connection()
-    comfyui_connected = image_service.check_connection()
+    ollama_connected = ollama_status["status"] == "connected"
+    comfyui_connected = comfyui_status["status"] == "connected"
     
     return {
         "status": "ready" if (ollama_connected and comfyui_connected) else "partial",
         "services": {
-            "ollama": "connected" if ollama_connected else "disconnected",
-            "comfyui": "connected" if comfyui_connected else "disconnected",
+            "ollama": ollama_status,
+            "comfyui": comfyui_status,
         },
     }

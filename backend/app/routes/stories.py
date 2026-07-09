@@ -8,9 +8,7 @@ from datetime import datetime
 
 from app.models.story import Story
 from app.models.page import Page
-from app.services.llm_service import OllamaService
-from app.services.image_service import ComfyUIService
-from app.services.pdf_service import PDFService
+from app.services import llm_service, image_service, pdf_service
 from app.config import get_settings
 from app.database import get_db
 from pydantic import BaseModel
@@ -18,11 +16,7 @@ from pydantic import BaseModel
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/stories", tags=["stories"])
 
-# Initialize services
 settings = get_settings()
-llm_service = OllamaService(settings.OLLAMA_BASE_URL, settings.OLLAMA_MODEL)
-image_service = ComfyUIService(settings.COMFYUI_BASE_URL, settings.IMAGE_MODEL, settings.IMAGES_PATH)
-pdf_service = PDFService(settings.PDFS_PATH)
 
 
 # Pydantic models for request/response
@@ -130,23 +124,21 @@ async def generate_story_outline(story_id: int, db: Session = Depends(get_db)):
         if not story:
             raise HTTPException(status_code=404, detail="Story not found")
 
-        # Update status
         story.status = "generating_outline"
         db.commit()
 
-        # Generate outline using LLM
-        story_data = llm_service.generate_story_outline(
-            story.description or "A children's story",
-            story.num_pages,
-            story.style,
-            story.tone,
-        )
-
-        if not story_data:
+        try:
+            # Generate outline using LLM
+            story_data = await llm_service.generate_story_outline(
+                story.description or "A children's story",
+                story.num_pages,
+            )
+        except Exception as e:
+            logger.error(f"LLM generation error: {e}")
             story.status = "failed"
-            story.error_message = "Failed to generate story outline from LLM"
+            story.error_message = str(e)
             db.commit()
-            raise HTTPException(status_code=500, detail="Failed to generate story outline")
+            raise HTTPException(status_code=500, detail=f"Failed to generate story outline: {e}")
 
         # Update story with generated data
         story.title = story_data.get("title", "Untitled Story")
@@ -158,7 +150,7 @@ async def generate_story_outline(story_id: int, db: Session = Depends(get_db)):
                 story_id=story.id,
                 page_number=page_data.get("page_number", 1),
                 narration=page_data.get("narration", ""),
-                image_prompt=page_data.get("illustration_description", ""),
+                image_prompt=page_data.get("image_prompt", ""),
                 status="pending",
             )
             db.add(page)
@@ -192,7 +184,13 @@ async def generate_images(story_id: int, db: Session = Depends(get_db)):
         story.status = "generating_images"
         db.commit()
 
-        pages = db.query(Page).filter(Page.story_id == story_id).all()
+        pages = db.query(Page).filter(Page.story_id == story_id).order_by(Page.page_number).all()
+        
+        if not pages:
+            raise HTTPException(status_code=400, detail="No pages to generate images for. Generate story outline first.")
+
+        # Initialize image service
+        img_service = image_service.ImageService()
         
         # Get character sheet for consistency
         characters = json.loads(story.characters_json or "[]")
@@ -202,31 +200,36 @@ async def generate_images(story_id: int, db: Session = Depends(get_db)):
 
         generated_count = 0
         for page in pages:
-            # Refine prompt with character consistency
-            refined_prompt = llm_service.refine_page_prompt(
-                page.narration,
-                character_sheet,
-            )
+            try:
+                # Refine prompt with character consistency if available
+                if character_sheet:
+                    refined_prompt = await llm_service.refine_image_prompt(
+                        page.image_prompt,
+                        characters,
+                    )
+                else:
+                    refined_prompt = page.image_prompt
 
-            if not refined_prompt:
-                refined_prompt = page.image_prompt
+                page.image_prompt = refined_prompt
+                page.status = "generating"
+                db.commit()
 
-            page.image_prompt = refined_prompt
-            page.status = "generating"
-            db.commit()
+                # Generate image
+                image_path = await img_service.generate_image(
+                    refined_prompt,
+                    page.page_number,
+                    story_id,
+                )
 
-            # Generate image
-            image_path = image_service.generate_image(
-                refined_prompt,
-                negative_prompt="blurry, low quality, distorted",
-            )
-
-            if image_path:
                 page.image_path = image_path
                 page.status = "complete"
                 generated_count += 1
-            else:
+                logger.info(f"Generated image for page {page.page_number}")
+
+            except Exception as e:
+                logger.error(f"Failed to generate image for page {page.page_number}: {e}")
                 page.status = "failed"
+                page.error_message = str(e)
 
             db.commit()
 
@@ -236,8 +239,9 @@ async def generate_images(story_id: int, db: Session = Depends(get_db)):
         logger.info(f"Generated {generated_count} images for story {story_id}")
         return {
             "status": "success",
-            "message": f"Generated {generated_count} images",
+            "message": f"Generated {generated_count}/{len(pages)} images",
             "story_id": story_id,
+            "generated_count": generated_count,
         }
 
     except HTTPException:
@@ -263,18 +267,24 @@ async def export_pdf(story_id: int, db: Session = Depends(get_db)):
 
         pages = db.query(Page).filter(Page.story_id == story_id).order_by(Page.page_number).all()
         
+        if not pages:
+            raise HTTPException(status_code=400, detail="No pages to export")
+
         # Prepare pages for PDF
         page_data = [
-            (page.image_path or "", page.narration or "")
+            {
+                "image_path": page.image_path,
+                "narration": page.narration or "",
+            }
             for page in pages
         ]
 
         # Generate PDF
-        pdf_filename = f"story_{story_id}_{int(datetime.utcnow().timestamp())}.pdf"
-        pdf_path = pdf_service.generate_simple_pdf(
+        pdf_service_instance = pdf_service.PDFService()
+        pdf_path = pdf_service_instance.generate_story_pdf(
+            story_id,
             story.title,
             page_data,
-            pdf_filename,
         )
 
         if not pdf_path:
@@ -284,7 +294,7 @@ async def export_pdf(story_id: int, db: Session = Depends(get_db)):
         story.status = "complete"
         db.commit()
 
-        logger.info(f"Generated PDF for story {story_id}")
+        logger.info(f"Generated PDF for story {story_id} at {pdf_path}")
         return {
             "status": "success",
             "message": "PDF generated",
@@ -359,40 +369,36 @@ async def regenerate_page_image(
 
         # Get character sheet
         characters = json.loads(story.characters_json or "[]")
-        character_sheet = "\n".join(
-            [f"{c.get('name')}: {c.get('appearance', '')}" for c in characters]
-        )
 
         # Refine prompt
-        refined_prompt = llm_service.refine_page_prompt(
-            page.narration,
-            character_sheet,
-        )
+        if characters:
+            refined_prompt = await llm_service.refine_image_prompt(
+                page.image_prompt,
+                characters,
+            )
+        else:
+            refined_prompt = page.image_prompt
 
-        if refined_prompt:
-            page.image_prompt = refined_prompt
-
+        page.image_prompt = refined_prompt
         page.status = "generating"
         db.commit()
 
         # Generate image
-        image_path = image_service.generate_image(
+        img_service = image_service.ImageService()
+        image_path = await img_service.generate_image(
             page.image_prompt,
-            negative_prompt="blurry, low quality, distorted",
+            page.page_number,
+            story_id,
         )
 
-        if image_path:
-            page.image_path = image_path
-            page.status = "complete"
-        else:
-            page.status = "failed"
-
+        page.image_path = image_path
+        page.status = "complete"
         db.commit()
         db.refresh(page)
 
         logger.info(f"Regenerated image for page {page_num}")
         return {
-            "status": "success" if image_path else "failed",
+            "status": "success",
             "page": page,
         }
 

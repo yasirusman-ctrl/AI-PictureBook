@@ -55,9 +55,9 @@ export default function StoryEditor() {
   if (isNew) {
     return (
       <div className="mx-auto max-w-2xl">
-        <h1 className="mb-6 text-2xl font-bold text-gray-900">Create New Story</h1>
+        <h1 className="mb-6 font-pixel-heading text-sm text-mc-text">Create New Story</h1>
         {error && <div className="mb-4"><ErrorMessage message={error} onDismiss={clearError} /></div>}
-        <div className="rounded-xl border bg-white p-6 shadow-sm">
+        <div className="pixel-card p-6">
           <StoryPrompt onSubmit={handleCreate} isLoading={isLoading} />
         </div>
       </div>
@@ -70,28 +70,28 @@ export default function StoryEditor() {
 
   if (!currentStory) {
     return (
-      <div className="text-center py-12">
-        <p className="text-gray-500">Story not found.</p>
-        <Link to="/" className="mt-2 inline-block text-indigo-600 hover:underline">Back to Stories</Link>
+      <div className="py-12 text-center">
+        <p className="font-pixel-body text-lg text-mc-text-muted">Story not found.</p>
+        <Link to="/" className="mt-2 inline-block font-pixel-heading text-[10px] text-mc-link hover:text-mc-accent">Back to Stories</Link>
       </div>
     );
   }
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <Link to="/" className="text-sm text-indigo-600 hover:underline">&larr; Back to Stories</Link>
-          <h1 className="mt-1 text-2xl font-bold text-gray-900">{currentStory.title}</h1>
-          <p className="text-sm text-gray-500">
-            {currentStory.artStyle} &middot; {currentStory.tone} &middot; {currentStory.numPages} pages
+          <Link to="/" className="font-pixel-heading text-[10px] text-mc-link hover:text-mc-accent">&larr; Back</Link>
+          <h1 className="mt-1 font-pixel-heading text-sm text-mc-text">{currentStory.title}</h1>
+          <p className="font-pixel-body text-base text-mc-text-muted">
+            {currentStory.artStyle} | {currentStory.tone} | {currentStory.numPages} pages
           </p>
         </div>
         <div className="flex gap-2">
           {(hasSomeImages || currentStory.status === 'completed') && (
             <button
               onClick={() => setShowExport(true)}
-              className="rounded-lg bg-green-600 px-4 py-2 text-sm font-medium text-white hover:bg-green-700"
+              className="pixel-btn bg-mc-accent2 px-4 py-2 text-white"
             >
               Export PDF
             </button>
@@ -101,15 +101,13 @@ export default function StoryEditor() {
 
       {error && <ErrorMessage message={error} onDismiss={clearError} />}
 
-      {/* Generation Progress */}
       {generationProgress > 0 && generationProgress < 100 && (
         <ProgressBar progress={generationProgress} label="Generating images..." />
       )}
 
-      {/* Outline Generation */}
       {!hasOutline && currentStory.status === 'draft' && (
-        <div className="rounded-xl border bg-white p-6 shadow-sm">
-          <h2 className="mb-4 text-lg font-semibold text-gray-900">Story Configuration</h2>
+        <div className="pixel-card p-6">
+          <h2 className="mb-4 font-pixel-heading text-xs text-mc-text">Story Configuration</h2>
           <StoryPrompt
             initialData={{
               prompt: currentStory.prompt || currentStory.title,
@@ -123,22 +121,21 @@ export default function StoryEditor() {
         </div>
       )}
 
-      {/* Outline Display */}
       {hasOutline && (
-        <div className="rounded-xl border bg-white p-6 shadow-sm">
-          <div className="mb-4 flex items-center justify-between">
-            <h2 className="text-lg font-semibold text-gray-900">Story Pages</h2>
+        <div className="pixel-card p-6">
+          <div className="mb-4 flex items-center justify-between gap-3">
+            <h2 className="font-pixel-heading text-xs text-mc-text">Story Pages</h2>
             {!allImagesGenerated && (
               <button
                 onClick={handleGenerateImages}
                 disabled={isLoading}
-                className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700 disabled:opacity-50"
+                className="pixel-btn bg-mc-accent px-4 py-2 text-white disabled:opacity-40"
               >
                 {isLoading && generationProgress === 0 ? 'Generating...' : 'Generate All Images'}
               </button>
             )}
             {allImagesGenerated && (
-              <span className="text-sm text-green-600 font-medium">All images generated</span>
+              <span className="font-pixel-heading text-[10px] text-mc-accent">All images generated</span>
             )}
           </div>
           <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
@@ -151,7 +148,6 @@ export default function StoryEditor() {
         </div>
       )}
 
-      {/* Export Modal */}
       {showExport && currentStory && (
         <ExportModal story={currentStory} onClose={() => setShowExport(false)} />
       )}

@@ -4,10 +4,10 @@ import { useStoryStore } from '../store/storyStore';
 import LoadingSpinner from '../components/LoadingSpinner';
 import ErrorMessage from '../components/ErrorMessage';
 
-const statusColors: Record<string, string> = {
-  draft: 'bg-yellow-100 text-yellow-800',
-  generating: 'bg-blue-100 text-blue-800',
-  completed: 'bg-green-100 text-green-800',
+const statusStyles: Record<string, string> = {
+  draft: 'border-yellow-600 text-yellow-400',
+  generating: 'border-blue-600 text-blue-400',
+  completed: 'border-mc-accent text-mc-accent',
 };
 
 export default function StoryList() {
@@ -28,29 +28,29 @@ export default function StoryList() {
   return (
     <div>
       <div className="mb-6 flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-gray-900">My Stories</h1>
+        <h1 className="font-pixel-heading text-sm text-mc-text">My Stories</h1>
         <Link
           to="/stories/new"
-          className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700"
+          className="pixel-btn bg-mc-accent px-4 py-2 text-white"
         >
-          + Create New Story
+          + CREATE
         </Link>
       </div>
 
-      {error && <ErrorMessage message={error} onDismiss={clearError} />}
+      {error && <div className="mb-4"><ErrorMessage message={error} onDismiss={clearError} /></div>}
 
       {isLoading ? (
         <LoadingSpinner size="lg" label="Loading stories..." />
       ) : stories.length === 0 ? (
-        <div className="rounded-xl border-2 border-dashed border-gray-300 p-12 text-center">
-          <svg className="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <div className="pixel-card p-12 text-center">
+          <svg className="mx-auto h-12 w-12 text-mc-text-muted" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
           </svg>
-          <h3 className="mt-4 text-lg font-semibold text-gray-900">No stories yet</h3>
-          <p className="mt-2 text-sm text-gray-500">Create your first story to get started.</p>
+          <h3 className="mt-4 font-pixel-heading text-xs text-mc-text">No stories yet</h3>
+          <p className="mt-2 font-pixel-body text-lg text-mc-text-muted">Create your first story to get started.</p>
           <Link
             to="/stories/new"
-            className="mt-4 inline-block rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700"
+            className="mt-4 inline-block pixel-btn bg-mc-accent px-4 py-2 text-white"
           >
             Create Your First Story
           </Link>
@@ -61,23 +61,23 @@ export default function StoryList() {
             <div
               key={story.id}
               onClick={() => navigate(`/stories/${story.id}`)}
-              className="cursor-pointer rounded-xl border border-gray-200 bg-white p-5 shadow-sm transition-shadow hover:shadow-md"
+              className="pixel-card cursor-pointer p-4 transition-opacity hover:opacity-90"
             >
-              <div className="mb-3 flex items-start justify-between">
-                <h3 className="font-semibold text-gray-900 line-clamp-2">{story.title}</h3>
-                <span className={`shrink-0 rounded-full px-2 py-0.5 text-xs font-medium ${statusColors[story.status]}`}>
+              <div className="mb-3 flex items-start justify-between gap-2">
+                <h3 className="font-pixel-heading text-[10px] text-mc-text line-clamp-2">{story.title}</h3>
+                <span className={`pixel-badge shrink-0 ${statusStyles[story.status]} bg-mc-surface-alt`}>
                   {story.status}
                 </span>
               </div>
-              <p className="mb-3 text-sm text-gray-500 line-clamp-2">{story.prompt}</p>
-              <div className="flex items-center justify-between text-xs text-gray-400">
+              <p className="mb-3 font-pixel-body text-base text-mc-text-muted line-clamp-2">{story.prompt}</p>
+              <div className="flex items-center justify-between font-pixel-body text-sm text-mc-text-muted">
                 <span>{story.pages?.length || 0} pages</span>
                 <span>{new Date(story.createdAt).toLocaleDateString()}</span>
               </div>
-              <div className="mt-3 flex justify-end">
+              <div className="mt-3 flex justify-end border-t-2 border-mc-border pt-2">
                 <button
                   onClick={(e) => handleDelete(story.id, e)}
-                  className="text-sm text-red-500 hover:text-red-700"
+                  className="font-pixel-heading text-[9px] text-mc-danger hover:text-white"
                 >
                   Delete
                 </button>

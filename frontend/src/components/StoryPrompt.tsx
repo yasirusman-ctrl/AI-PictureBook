@@ -20,31 +20,31 @@ export default function StoryPrompt({ initialData, onSubmit, isLoading }: Props)
   });
 
   return (
-    <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+    <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
       <div>
-        <label htmlFor="prompt" className="block text-sm font-medium text-gray-700">
+        <label htmlFor="prompt" className="mb-1 block font-pixel-heading text-[10px] text-mc-text-muted">
           Story Concept
         </label>
         <textarea
           id="prompt"
           rows={4}
-          className="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+          className="pixel-input block w-full px-3 py-2"
           placeholder="Describe your story idea..."
           {...register('prompt', { required: 'Please enter a story concept' })}
         />
         {errors.prompt && (
-          <p className="mt-1 text-sm text-red-600">{errors.prompt.message}</p>
+          <p className="mt-1 font-pixel-body text-sm text-mc-danger">{errors.prompt.message}</p>
         )}
       </div>
 
-      <div className="grid grid-cols-1 gap-6 sm:grid-cols-3">
+      <div className="grid grid-cols-1 gap-5 sm:grid-cols-3">
         <div>
-          <label htmlFor="artStyle" className="block text-sm font-medium text-gray-700">
+          <label htmlFor="artStyle" className="mb-1 block font-pixel-heading text-[10px] text-mc-text-muted">
             Art Style
           </label>
           <select
             id="artStyle"
-            className="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+            className="pixel-input block w-full px-3 py-2"
             {...register('artStyle')}
           >
             {ART_STYLES.map(s => (
@@ -54,12 +54,12 @@ export default function StoryPrompt({ initialData, onSubmit, isLoading }: Props)
         </div>
 
         <div>
-          <label htmlFor="tone" className="block text-sm font-medium text-gray-700">
+          <label htmlFor="tone" className="mb-1 block font-pixel-heading text-[10px] text-mc-text-muted">
             Tone
           </label>
           <select
             id="tone"
-            className="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+            className="pixel-input block w-full px-3 py-2"
             {...register('tone')}
           >
             {TONES.map(t => (
@@ -69,22 +69,22 @@ export default function StoryPrompt({ initialData, onSubmit, isLoading }: Props)
         </div>
 
         <div>
-          <label htmlFor="numPages" className="block text-sm font-medium text-gray-700">
-            Number of Pages
+          <label htmlFor="numPages" className="mb-1 block font-pixel-heading text-[10px] text-mc-text-muted">
+            Pages
           </label>
           <input
             id="numPages"
             type="number"
             min={1}
             max={10}
-            className="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+            className="pixel-input block w-full px-3 py-2"
             {...register('numPages', {
-              min: { value: 1, message: 'Minimum 1 page' },
-              max: { value: 10, message: 'Maximum 10 pages' },
+              min: { value: 1, message: 'Min 1 page' },
+              max: { value: 10, message: 'Max 10 pages' },
             })}
           />
           {errors.numPages && (
-            <p className="mt-1 text-sm text-red-600">{errors.numPages.message}</p>
+            <p className="mt-1 font-pixel-body text-sm text-mc-danger">{errors.numPages.message}</p>
           )}
         </div>
       </div>
@@ -92,9 +92,9 @@ export default function StoryPrompt({ initialData, onSubmit, isLoading }: Props)
       <button
         type="submit"
         disabled={isLoading}
-        className="w-full rounded-lg bg-indigo-600 px-4 py-2 text-white hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-50"
+        className="pixel-btn w-full bg-mc-accent px-4 py-3 text-white disabled:opacity-40"
       >
-        {isLoading ? 'Generating...' : 'Generate Story Outline'}
+        {isLoading ? 'Generating...' : 'Generate Outline'}
       </button>
     </form>
   );

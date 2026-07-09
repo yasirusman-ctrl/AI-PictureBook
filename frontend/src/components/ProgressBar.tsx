@@ -9,14 +9,14 @@ export default function ProgressBar({ progress, label }: Props) {
   return (
     <div className="w-full">
       {label && (
-        <div className="mb-1 flex items-center justify-between text-sm text-gray-600">
+        <div className="mb-1 flex items-center justify-between font-pixel-body text-sm text-mc-text-muted">
           <span>{label}</span>
           <span>{clamped}%</span>
         </div>
       )}
-      <div className="h-2 w-full overflow-hidden rounded-full bg-gray-200">
+      <div className="h-4 w-full border-2 border-mc-border bg-mc-bg">
         <div
-          className="h-full rounded-full bg-indigo-600 transition-all duration-500 ease-out"
+          className="h-full bg-mc-accent transition-all duration-500 ease-out"
           style={{ width: `${clamped}%` }}
         />
       </div>

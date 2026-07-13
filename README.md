@@ -13,7 +13,7 @@ This project generates children's stories with illustrations entirely locally us
 - **PDF Export**: ReportLab
 
 ## 📋 Prerequisitessdsa
-
+asdas
 ### Backend Requirements
 - Python 3.10+
 - Ollama (for LLM)

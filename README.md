@@ -6,13 +6,13 @@ An MVP for generating 16-page children's picture books using local AI models. Ev
 
 This project generates children's stories with illustrations entirely locally using:
 - **Story Generation**: Ollama + Mistral/Llama 3.2/Qwen 2.5
-- **Image Generation**: ComfyUI + SDXL/FLUX.1-dev
+- **Image Generation**: ComfyUI + SDXL/FLUX.1-devdsadsasd
 - **Backend**: FastAPI
 - **Frontend**: React (Vite)
 - **Database**: SQLite
 - **PDF Export**: ReportLab
 
-## 📋 Prerequisites
+## 📋 Prerequisitessdsa
 
 ### Backend Requirements
 - Python 3.10+

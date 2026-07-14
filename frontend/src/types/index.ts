@@ -1,4 +1,4 @@
-export type StoryStatus = 'draft' | 'generating' | 'completed';
+export type StoryStatus = 'draft' | 'generating' | 'completed' | 'generating_outline' | 'generating_images' | 'generating_pdf' | 'complete' | 'failed' | 'outline_complete' | 'images_complete';
 
 export interface StoryPage {
   id: string;

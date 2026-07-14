@@ -1,157 +1,157 @@
-import type { Story, StoryFormData } from '../types';
+import type { Story, StoryFormData, StoryPage } from '../types';
 
-const delay = (ms: number) => new Promise<void>(resolve => setTimeout(resolve, ms));
+const API_BASE = 'http://localhost:8000/api/stories';
 
-const sampleNarrations: Record<string, string[]> = {
-  whimsical: [
-    'In a land where colors danced and sang, there lived a young dreamer named Elara who could paint with starlight.',
-    'Elara\'s brush dipped into a pool of moonlight, and with a flick of her wrist, she painted a bridge of pure silver across the sky.',
-    'The creatures of the night gathered to watch—glowing butterflies, talking foxes, and trees that hummed ancient lullabies.',
-    'Each stroke of her brush brought forth wonders unseen, and the world below began to believe in magic once again.',
-  ],
-  dark: [
-    'The old house on Hemlock Lane had stood empty for decades, its windows like hollow eyes staring into the soul.',
-    'When Marcus first crossed the threshold, the floorboards groaned as if warning him to turn back while he still could.',
-    'The walls whispered secrets in a language older than time, and shadows moved of their own accord in the corner of his vision.',
-    'In the deepest cellar, he found a door that should not exist—pulsing with a light that promised answers no living mind should know.',
-  ],
-  humorous: [
-    'Sir Reginald the Unremarkable was possibly the worst knight in all the kingdom—he was terrified of horses and allergic to armor.',
-    'When the royal cook quit to join a monastery, Reginald was tasked with preparing the king\'s birthday feast, a disaster waiting to happen.',
-    'He mistook salt for sugar, chili for paprika, and somehow managed to set the kitchen curtains on fire without even lighting a match.',
-    'The king declared it the most memorable meal of his life—not because it was good, but because no one would ever forget the sight of a flaming cake.',
-  ],
-  dramatic: [
-    'Captain Astra stood at the helm of the Starfire, staring into the void where her homeworld had once been.',
-    'The signal had come without warning—a distress call from a dimension thought to be merely theoretical.',
-    'Her crew braced as the ship lurched through the rift, reality bending around them like light through warped glass.',
-    'What they found on the other side would change humanity\'s understanding of existence itself.',
-  ],
-  educational: [
-    'Did you know that a single teaspoon of soil contains more living organisms than there are people on Earth?',
-    'Beneath your feet lies an entire universe of tiny creatures, each playing a vital role in keeping our planet healthy.',
-    'Earthworms are nature\'s plow, turning and aerating the soil as they digest organic matter.',
-    'Bacteria and fungi form complex networks underground, communicating and sharing nutrients like an internet beneath our feet.',
-  ],
-  calm: [
-    'The morning sun filtered through the bamboo forest, casting long golden stripes across the mossy path.',
-    'A gentle stream wandered alongside the trail, its soft murmur blending with the rustle of leaves overhead.',
-    'She paused at the old wooden bridge, watching how the light played on the water\'s surface like scattered jewels.',
-    'In this moment, there was nowhere to be and nothing to do—just the quiet beauty of being alive.',
-  ],
-};
-
-const imageSeed = (storyId: string, pageId: string) => {
-  const hash = storyId.length + pageId.length;
-  return `story-${hash}-${Date.now()}`;
-};
-
-interface MockDB {
-  stories: Story[];
+interface BackendPage {
+  id: number;
+  page_number: number;
+  narration: string | null;
+  image_prompt: string | null;
+  image_path: string | null;
+  status: string;
 }
-const db: MockDB = { stories: [] };
-let nextId = 1;
 
-function makeStory(data: StoryFormData): Story {
-  const id = `story-${nextId++}`;
-  const now = new Date().toISOString();
-  const narrations = sampleNarrations[data.tone] || sampleNarrations.whimsical;
+interface BackendStory {
+  id: number;
+  title: string;
+  description: string | null;
+  status: string;
+  style: string | null;
+  tone: string | null;
+  num_pages: number;
+  created_at: string;
+  updated_at: string;
+}
+
+function toPage(p: BackendPage): StoryPage {
   return {
-    id,
-    title: data.prompt.slice(0, 40) + (data.prompt.length > 40 ? '...' : ''),
-    prompt: data.prompt,
-    artStyle: data.artStyle,
-    tone: data.tone,
-    numPages: data.numPages,
-    status: 'draft',
-    createdAt: now,
-    updatedAt: now,
-    pages: Array.from({ length: data.numPages }, (_, i) => ({
-      id: `page-${id}-${i + 1}`,
-      pageNumber: i + 1,
-      narration: narrations[i] || '',
-      imageUrl: null,
-    })),
+    id: String(p.id),
+    pageNumber: p.page_number,
+    narration: p.narration || '',
+    imageUrl: p.image_path || null,
+  };
+}
+
+function toStory(s: BackendStory, pages: BackendPage[] = []): Story {
+  return {
+    id: String(s.id),
+    title: s.title,
+    prompt: s.description || '',
+    artStyle: s.style || '',
+    tone: s.tone || '',
+    numPages: s.num_pages,
+    status: s.status as Story['status'],
+    createdAt: s.created_at,
+    updatedAt: s.updated_at,
+    pages: pages.map(toPage),
   };
 }
 
 export async function fetchStories(): Promise<Story[]> {
-  await delay(400);
-  return [...db.stories];
+  const res = await fetch(`${API_BASE}`);
+  if (!res.ok) throw new Error(`Failed to fetch stories: ${res.statusText}`);
+  const data: BackendStory[] = await res.json();
+  return data.map(s => toStory(s));
 }
 
 export async function createStory(data: StoryFormData): Promise<Story> {
-  await delay(600);
-  const story = makeStory(data);
-  db.stories.push(story);
-  return { ...story, pages: story.pages.map(p => ({ ...p })) };
+  const res = await fetch(`${API_BASE}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      concept: data.prompt,
+      style: data.artStyle,
+      tone: data.tone,
+      num_pages: data.numPages,
+    }),
+  });
+  if (!res.ok) throw new Error(`Failed to create story: ${res.statusText}`);
+  const story: BackendStory = await res.json();
+  return toStory(story);
 }
 
 export async function getStory(id: string): Promise<Story | undefined> {
-  await delay(300);
-  return db.stories.find(s => s.id === id);
+  const res = await fetch(`${API_BASE}/${id}`);
+  if (res.status === 404) return undefined;
+  if (!res.ok) throw new Error(`Failed to get story: ${res.statusText}`);
+  const data = await res.json();
+  const story: BackendStory = data;
+  const pages: BackendPage[] = data.pages || [];
+  return toStory(story, pages);
 }
 
-export async function updateStory(id: string, updates: Partial<Story>): Promise<Story | undefined> {
-  await delay(300);
-  const idx = db.stories.findIndex(s => s.id === id);
-  if (idx === -1) return undefined;
-  db.stories[idx] = { ...db.stories[idx], ...updates, updatedAt: new Date().toISOString() };
-  return { ...db.stories[idx] };
+export async function updateStory(id: string, _updates: Partial<Story>): Promise<Story | undefined> {
+  const res = await fetch(`${API_BASE}/${id}`);
+  if (res.status === 404) return undefined;
+  if (!res.ok) throw new Error(`Failed to get story: ${res.statusText}`);
+  const story: BackendStory = await res.json();
+  return toStory(story);
 }
 
 export async function deleteStory(id: string): Promise<void> {
-  await delay(400);
-  db.stories = db.stories.filter(s => s.id !== id);
+  const res = await fetch(`${API_BASE}/${id}`, { method: 'DELETE' });
+  if (!res.ok) throw new Error(`Failed to delete story: ${res.statusText}`);
 }
 
 export async function generateOutline(storyId: string): Promise<Story | undefined> {
-  await delay(1500);
-  const idx = db.stories.findIndex(s => s.id === storyId);
-  if (idx === -1) return undefined;
-  const story = db.stories[idx];
-  const narrations = sampleNarrations[story.tone] || sampleNarrations.whimsical;
-  story.pages.forEach((page, i) => {
-    page.narration = narrations[i % narrations.length];
+  const res = await fetch(`${API_BASE}/${storyId}/generate-story`, {
+    method: 'POST',
   });
-  story.status = 'draft';
-  story.updatedAt = new Date().toISOString();
-  return { ...story, pages: story.pages.map(p => ({ ...p })) };
+  if (res.status === 404) return undefined;
+  if (!res.ok) throw new Error(`Failed to generate outline: ${res.statusText}`);
+  const data = await res.json();
+  const story: BackendStory = data.story;
+  const pages: BackendPage[] = data.story?.pages || [];
+  return toStory(story, pages);
 }
 
 export async function generateImage(storyId: string, pageId: string): Promise<string> {
-  await delay(2000);
-  const seed = imageSeed(storyId, pageId);
-  return `https://picsum.photos/seed/${seed}/600/800`;
+  const storyRes = await fetch(`${API_BASE}/${storyId}`);
+  if (!storyRes.ok) throw new Error(`Failed to fetch story: ${storyRes.statusText}`);
+  const storyData = await storyRes.json();
+  const page = (storyData.pages || []).find((p: BackendPage) => String(p.id) === pageId);
+  if (!page) throw new Error(`Page ${pageId} not found`);
+
+  const res = await fetch(`${API_BASE}/${storyId}/pages/${page.page_number}/regenerate-image`, {
+    method: 'POST',
+  });
+  if (!res.ok) throw new Error(`Failed to generate image: ${res.statusText}`);
+  const data = await res.json();
+  return data.page?.image_path || '';
 }
 
 export async function generateImagesForStory(storyId: string, onProgress?: (progress: number) => void): Promise<Story | undefined> {
-  const idx = db.stories.findIndex(s => s.id === storyId);
-  if (idx === -1) return undefined;
-  const story = db.stories[idx];
-  story.status = 'generating';
-  story.updatedAt = new Date().toISOString();
+  const res = await fetch(`${API_BASE}/${storyId}/generate-images`, {
+    method: 'POST',
+  });
+  if (res.status === 404) return undefined;
+  if (!res.ok) throw new Error(`Failed to generate images: ${res.statusText}`);
 
-  for (let i = 0; i < story.pages.length; i++) {
-    await delay(1500);
-    const seed = imageSeed(storyId, story.pages[i].id);
-    story.pages[i].imageUrl = `https://picsum.photos/seed/${seed}/600/800`;
-    onProgress?.(Math.round(((i + 1) / story.pages.length) * 100));
-  }
+  onProgress?.(100);
 
-  story.status = 'completed';
-  story.updatedAt = new Date().toISOString();
-  return { ...story, pages: story.pages.map(p => ({ ...p })) };
+  const storyRes = await fetch(`${API_BASE}/${storyId}`);
+  if (!storyRes.ok) throw new Error(`Failed to fetch updated story: ${storyRes.statusText}`);
+  const data = await storyRes.json();
+  return toStory(data, data.pages || []);
 }
 
 export async function updatePageNarration(storyId: string, pageId: string, narration: string): Promise<Story | undefined> {
-  await delay(200);
-  const idx = db.stories.findIndex(s => s.id === storyId);
-  if (idx === -1) return undefined;
-  const story = db.stories[idx];
-  const page = story.pages.find(p => p.id === pageId);
-  if (!page) return undefined;
-  page.narration = narration;
-  story.updatedAt = new Date().toISOString();
-  return { ...story, pages: story.pages.map(p => ({ ...p })) };
+  const storyRes = await fetch(`${API_BASE}/${storyId}`);
+  if (!storyRes.ok) throw new Error(`Failed to fetch story: ${storyRes.statusText}`);
+  const storyData = await storyRes.json();
+  const page = (storyData.pages || []).find((p: BackendPage) => String(p.id) === pageId);
+  if (!page) throw new Error(`Page ${pageId} not found`);
+
+  const res = await fetch(`${API_BASE}/${storyId}/pages/${page.page_number}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ narration }),
+  });
+  if (res.status === 404) return undefined;
+  if (!res.ok) throw new Error(`Failed to update page: ${res.statusText}`);
+
+  const updatedStoryRes = await fetch(`${API_BASE}/${storyId}`);
+  if (!updatedStoryRes.ok) throw new Error(`Failed to fetch updated story: ${updatedStoryRes.statusText}`);
+  const updatedData = await updatedStoryRes.json();
+  return toStory(updatedData, updatedData.pages || []);
 }
